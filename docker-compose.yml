@@ -1,0 +1,17 @@
+version: '3.8'
+services:
+  mysql-db:
+    image: mysql:8.0
+    container_name: gestmed-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: scheduling
+    ports:
+      - "3307:3307"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: gestmed-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
