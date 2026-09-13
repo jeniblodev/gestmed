@@ -1,0 +1,12 @@
+type AppointmentHistory {
+    id: ID!
+    patientUsername: String!
+    doctorUsername: String!
+    appointmentDate: String!
+    status: String!
+}
+
+type Query {
+    getPatientHistory(patientUsername: String!): [AppointmentHistory]
+    getAllHistory: [AppointmentHistory]
+}
