@@ -19,6 +19,26 @@ public class Appointment {
     private LocalDateTime appointmentDate;
     private String status;
 
+    public Long getId() {
+        return id;
+    }
+
+    public String getPatientUsername() {
+        return patientUsername;
+    }
+
+    public String getDoctorUsername() {
+        return doctorUsername;
+    }
+
+    public LocalDateTime getAppointmentDate() {
+        return appointmentDate;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
     public void setStatus(String status) {
         this.status = status;
     }

@@ -3,6 +3,7 @@ package com.gestmed.scheduling.controller;
 import com.gestmed.scheduling.entity.Appointment;
 import com.gestmed.scheduling.service.AppointmentService;
 import org.springframework.graphql.data.method.annotation.Argument;
+import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -35,7 +36,7 @@ public class AppointmentGraphQLController {
         return appointmentService.getAllAppointments();
     }
 
-    @QueryMapping
+    @MutationMapping
     @PreAuthorize("hasRole('DOCTOR') or hasRole('NURSE')")
     public Appointment createAppointment(@Argument AppointmentInput input) {
         Appointment appointment = new Appointment();

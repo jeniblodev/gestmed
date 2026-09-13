@@ -20,7 +20,7 @@ public class AppointmentService {
     }
 
     public Appointment createAppointment(Appointment appointment) {
-        appointment.setStatus("SCHEDULE");
+        appointment.setStatus("SCHEDULED");
         Appointment savedAppointment = appointmentRepository.save(appointment);
 
         rabbitTemplate.convertAndSend(
