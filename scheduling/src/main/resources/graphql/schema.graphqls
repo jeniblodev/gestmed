@@ -1,0 +1,25 @@
+type Appointment {
+    id: ID!
+    patientUsername: String!
+    doctorUsername: String!
+    appointmentDate: String!
+    status: String!
+}
+
+input AppointmentInput {
+    patientUsername: String!
+    doctorUsername: String!
+    appointmentDate: String!
+}
+
+type Query {
+    # Permite ao paciente buscar suas proprias consultas
+    getPatientAppointments: [Appointment]
+    # Permite a medicos e enfermeiros buscar o historico completo
+    getAllAppointments: [Appointment]
+}
+
+type Mutation {
+    # Permite a medicos e enfermeiros registrar uma nova consulta
+    createAppointment(input: AppointmentInput!): Appointment
+}
