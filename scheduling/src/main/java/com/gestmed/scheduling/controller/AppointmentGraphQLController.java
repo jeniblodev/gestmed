@@ -36,6 +36,14 @@ public class AppointmentGraphQLController {
         return appointmentService.getAllAppointments();
     }
 
+    @QueryMapping
+    @PreAuthorize("hasRole('PATIENT') or hasRole('DOCTOR') or hasRole('NURSE')")
+    public List<Appointment> getPatientFutureAppointments() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication.getName();
+        return appointmentService.getFutureAppointmentByPatient(currentUsername);
+    }
+
     @MutationMapping
     @PreAuthorize("hasRole('DOCTOR') or hasRole('NURSE')")
     public Appointment createAppointment(@Argument AppointmentInput input) {
@@ -46,6 +54,16 @@ public class AppointmentGraphQLController {
 
         return appointmentService.createAppointment(appointment);
     }
+
+    @MutationMapping
+    @PreAuthorize("hasRole('DOCTOR') or hasRole('NURSE')")
+    public Appointment updateAppointment(@Argument UpdateAppointmentInput input) {
+        return appointmentService.updateAppointment(
+                input.id(),
+                LocalDateTime.parse(input.appointmentDate()),
+                input.status());
+    }
 }
 
 record AppointmentInput(String patientUsername, String doctorUsername, String appointmentDate) {}
+record UpdateAppointmentInput(Long id, String appointmentDate, String status) {}

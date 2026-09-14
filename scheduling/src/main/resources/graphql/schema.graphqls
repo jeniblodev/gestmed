@@ -12,14 +12,24 @@ input AppointmentInput {
     appointmentDate: String!
 }
 
+input UpdateAppointmentInput {
+    id: ID!
+    appointmentDate: String!
+    status: String!
+}
+
 type Query {
     # Permite ao paciente buscar suas proprias consultas
     getPatientAppointments: [Appointment]
     # Permite a medicos e enfermeiros buscar o historico completo
     getAllAppointments: [Appointment]
+    # Retorna apenas consultas futuras
+    getPatientFutureAppointments: [Appointment]
 }
 
 type Mutation {
     # Permite a medicos e enfermeiros registrar uma nova consulta
     createAppointment(input: AppointmentInput!): Appointment
+    # Permite a medicos e enfermeiros modificar consultas existentes
+    updateAppointment(input: UpdateAppointmentInput!): Appointment
 }
