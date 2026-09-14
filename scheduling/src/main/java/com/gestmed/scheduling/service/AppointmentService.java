@@ -6,6 +6,7 @@ import com.gestmed.scheduling.repository.AppointmentRepository;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -42,5 +43,27 @@ public class AppointmentService {
 
     public List<Appointment> getPatientAppointments(String currentUsername) {
         return appointmentRepository.findByPatientUsername(currentUsername);
+    }
+
+    public List<Appointment> getFutureAppointmentByPatient(String patientUsername) {
+        return appointmentRepository.findByPatientUsernameAndAppointmentDateAfter(patientUsername, LocalDateTime.now());
+    }
+
+    public Appointment updateAppointment(Long id, LocalDateTime newDate, String newStatus) {
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Agendamento não encontrado"));
+
+        appointment.setAppointmentDate(newDate);
+        appointment.setStatus(newStatus);
+
+        Appointment updateAppoitment = appointmentRepository.save(appointment);
+
+        rabbitTemplate.convertAndSend(
+                RabbitMQConfig.EXCHANGE_NAME,
+                RabbitMQConfig.ROUTING_KEY,
+                updateAppoitment
+        );
+
+        return updateAppoitment;
     }
 }
