@@ -85,4 +85,9 @@ public class User {
     public boolean isEnabled() {
         return enabled;
     }
+
+    public boolean hasRole(String roleName) {
+        return roles.stream()
+                .anyMatch(role -> role.getName().equals(roleName));
+    }
 }

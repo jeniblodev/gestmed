@@ -1,9 +1,16 @@
+enum AppointmentStatus {
+    SCHEDULED
+    CONFIRMED
+    COMPLETED
+    CANCELLED
+}
+
 type Appointment {
     id: ID!
     patientUsername: String!
     doctorUsername: String!
     appointmentDate: String!
-    status: String!
+    status: AppointmentStatus!
 }
 
 input AppointmentInput {
@@ -15,7 +22,7 @@ input AppointmentInput {
 input UpdateAppointmentInput {
     id: ID!
     appointmentDate: String!
-    status: String!
+    status: AppointmentStatus!
 }
 
 type Query {

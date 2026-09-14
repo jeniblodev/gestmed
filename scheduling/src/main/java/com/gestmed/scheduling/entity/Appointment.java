@@ -1,11 +1,6 @@
 package com.gestmed.scheduling.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
 
@@ -37,12 +32,13 @@ public class Appointment {
     )
     private LocalDateTime appointmentDate;
 
+    @Enumerated(EnumType.STRING)
     @Column(
             name = "status",
             nullable = false,
             length = 30
     )
-    private String status;
+    private AppointmentStatus status;
 
     public Appointment() {
     }
@@ -63,7 +59,7 @@ public class Appointment {
         return appointmentDate;
     }
 
-    public String getStatus() {
+    public AppointmentStatus getStatus() {
         return status;
     }
 
@@ -81,7 +77,7 @@ public class Appointment {
         this.appointmentDate = appointmentDate;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(AppointmentStatus status) {
         this.status = status;
     }
 }

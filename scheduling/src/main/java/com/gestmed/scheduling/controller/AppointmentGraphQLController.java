@@ -1,6 +1,7 @@
 package com.gestmed.scheduling.controller;
 
 import com.gestmed.scheduling.entity.Appointment;
+import com.gestmed.scheduling.exception.InvalidAppointmentException;
 import com.gestmed.scheduling.service.AppointmentService;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
@@ -9,6 +10,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
+import com.gestmed.scheduling.dto.AppointmentInput;
+import com.gestmed.scheduling.dto.UpdateAppointmentInput;
+import jakarta.validation.Valid;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -46,24 +50,31 @@ public class AppointmentGraphQLController {
 
     @MutationMapping
     @PreAuthorize("hasRole('DOCTOR') or hasRole('NURSE')")
-    public Appointment createAppointment(@Argument AppointmentInput input) {
+    public Appointment createAppointment(@Argument @Valid AppointmentInput input) {
         Appointment appointment = new Appointment();
         appointment.setPatientUsername(input.patientUsername());
         appointment.setDoctorUsername(input.doctorUsername());
-        appointment.setAppointmentDate(LocalDateTime.parse(input.appointmentDate()));
+        appointment.setAppointmentDate(parseAppointmentDate(input.appointmentDate()));
 
         return appointmentService.createAppointment(appointment);
     }
 
     @MutationMapping
     @PreAuthorize("hasRole('DOCTOR') or hasRole('NURSE')")
-    public Appointment updateAppointment(@Argument UpdateAppointmentInput input) {
+    public Appointment updateAppointment(@Argument @Valid UpdateAppointmentInput input) {
         return appointmentService.updateAppointment(
                 input.id(),
-                LocalDateTime.parse(input.appointmentDate()),
+                parseAppointmentDate(input.appointmentDate()),
                 input.status());
     }
-}
 
-record AppointmentInput(String patientUsername, String doctorUsername, String appointmentDate) {}
-record UpdateAppointmentInput(Long id, String appointmentDate, String status) {}
+    private LocalDateTime parseAppointmentDate(String value) {
+        if (value == null || value.isBlank()) {
+            throw new InvalidAppointmentException(
+                    "A data da consulta é obrigatória"
+            );
+        }
+
+        return LocalDateTime.parse(value);
+    }
+}
