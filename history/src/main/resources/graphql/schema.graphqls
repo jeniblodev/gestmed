@@ -7,6 +7,22 @@ type AppointmentHistory {
 }
 
 type Query {
-    getPatientHistory(patientUsername: String!): [AppointmentHistory]
-    getAllHistory: [AppointmentHistory]
+    # O paciente autenticado consulta somente o próprio histórico
+    getMyHistory: [AppointmentHistory!]!
+
+    # O paciente autenticado consulta somente suas consultas futuras
+    getMyFutureHistory: [AppointmentHistory!]!
+
+    # Médicos e enfermeiros consultam um paciente específico
+    getPatientHistory(
+        patientUsername: String!
+    ): [AppointmentHistory!]!
+
+    # Médicos e enfermeiros consultam consultas futuras de um paciente
+    getPatientFutureHistory(
+        patientUsername: String!
+    ): [AppointmentHistory!]!
+
+    # Médicos e enfermeiros consultam todos os registros
+    getAllHistory: [AppointmentHistory!]!
 }
