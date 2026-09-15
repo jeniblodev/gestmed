@@ -1,13 +1,14 @@
 package com.gestmed.history.listener;
 
 import com.gestmed.history.config.RabbitMQConfig;
-import com.gestmed.history.entity.AppointmentHistory;
 import com.gestmed.history.event.AppointmentEvent;
-import com.gestmed.history.repository.AppointmentHistoryRepository;
+import com.gestmed.history.service.HistoryEventService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
+
+import java.util.Set;
 
 @Component
 public class HistoryListener {
@@ -15,12 +16,21 @@ public class HistoryListener {
     private static final Logger log =
             LoggerFactory.getLogger(HistoryListener.class);
 
-    private final AppointmentHistoryRepository repository;
+    private static final int SUPPORTED_EVENT_VERSION = 1;
+
+    private static final Set<String> SUPPORTED_EVENT_TYPES =
+            Set.of(
+                    "CREATED",
+                    "UPDATED",
+                    "CANCELLED"
+            );
+
+    private final HistoryEventService historyEventService;
 
     public HistoryListener(
-            AppointmentHistoryRepository repository) {
+            HistoryEventService historyEventService) {
 
-        this.repository = repository;
+        this.historyEventService = historyEventService;
     }
 
     @RabbitListener(
@@ -32,31 +42,14 @@ public class HistoryListener {
         validateEvent(event);
 
         log.info(
-                "Atualizando histórico: eventId={}, tipo={}, " +
-                        "agendamento={}",
+                "Evento recebido pelo histórico: " +
+                        "eventId={}, tipo={}, agendamento={}",
                 event.eventId(),
                 event.eventType(),
                 event.appointmentId()
         );
 
-        AppointmentHistory history =
-                repository
-                        .findById(event.appointmentId())
-                        .orElseGet(AppointmentHistory::new);
-
-        history.setId(event.appointmentId());
-        history.setPatientUsername(
-                event.patientUsername()
-        );
-        history.setDoctorUsername(
-                event.doctorUsername()
-        );
-        history.setAppointmentDate(
-                event.appointmentDate()
-        );
-        history.setStatus(event.status());
-
-        repository.save(history);
+        historyEventService.process(event);
     }
 
     private void validateEvent(AppointmentEvent event) {
@@ -72,7 +65,26 @@ public class HistoryListener {
             );
         }
 
-        if (event.eventVersion() != 1) {
+        if (event.eventType() == null
+                || event.eventType().isBlank()) {
+
+            throw new IllegalArgumentException(
+                    "O tipo do evento é obrigatório"
+            );
+        }
+
+        if (!SUPPORTED_EVENT_TYPES.contains(
+                event.eventType())) {
+
+            throw new IllegalArgumentException(
+                    "Tipo de evento não suportado: "
+                            + event.eventType()
+            );
+        }
+
+        if (event.eventVersion()
+                != SUPPORTED_EVENT_VERSION) {
+
             throw new IllegalArgumentException(
                     "Versão de evento não suportada: "
                             + event.eventVersion()
