@@ -97,6 +97,12 @@ public class HistoryListener {
             );
         }
 
+        if (event.occurredAt() == null) {
+            throw new IllegalArgumentException(
+                    "A data de ocorrência do evento é obrigatória"
+            );
+        }
+
         if (event.patientUsername() == null
                 || event.patientUsername().isBlank()) {
 
