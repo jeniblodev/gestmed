@@ -50,36 +50,41 @@ public class NotificationListener {
         }
 
         log.info(
-                "Evento de notificação processado com sucesso: {}",
+                "Evento de notificação concluído: eventId={}",
                 event.eventId()
         );
     }
 
     private void processCreated(AppointmentEvent event) {
         log.info(
-                "LEMBRETE CRIADO: paciente={}, médico={}, data={}",
+                "NOTIFICAÇÃO PROCESSADA - NOVA CONSULTA: " +
+                        "paciente={}, médico={}, data={}, agendamento={}",
                 event.patientUsername(),
                 event.doctorUsername(),
-                event.appointmentDate()
+                event.appointmentDate(),
+                event.appointmentId()
         );
     }
 
     private void processUpdated(AppointmentEvent event) {
         log.info(
-                "LEMBRETE ATUALIZADO: agendamento={}, " +
-                        "paciente={}, novaData={}, status={}",
-                event.appointmentId(),
+                "NOTIFICAÇÃO PROCESSADA - CONSULTA ALTERADA: " +
+                        "paciente={}, médico={}, novaData={}, status={}, " +
+                        "agendamento={}",
                 event.patientUsername(),
+                event.doctorUsername(),
                 event.appointmentDate(),
-                event.status()
+                event.status(),
+                event.appointmentId()
         );
     }
 
     private void processCancelled(AppointmentEvent event) {
         log.info(
-                "LEMBRETE CANCELADO: agendamento={}, paciente={}",
-                event.appointmentId(),
-                event.patientUsername()
+                "NOTIFICAÇÃO PROCESSADA - CONSULTA CANCELADA: " +
+                        "paciente={}, agendamento={}",
+                event.patientUsername(),
+                event.appointmentId()
         );
     }
 
