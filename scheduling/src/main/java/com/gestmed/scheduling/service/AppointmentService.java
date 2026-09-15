@@ -1,6 +1,5 @@
 package com.gestmed.scheduling.service;
 
-import com.gestmed.scheduling.config.RabbitMQConfig;
 import com.gestmed.scheduling.entity.Appointment;
 import com.gestmed.scheduling.entity.AppointmentStatus;
 import com.gestmed.scheduling.entity.User;
@@ -10,7 +9,7 @@ import com.gestmed.scheduling.exception.ScheduleConflictException;
 import com.gestmed.scheduling.exception.UserNotFoundException;
 import com.gestmed.scheduling.repository.AppointmentRepository;
 import com.gestmed.scheduling.repository.UserRepository;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import com.gestmed.scheduling.event.AppointmentEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,16 +21,16 @@ public class AppointmentService {
 
     private final AppointmentRepository appointmentRepository;
     private final UserRepository userRepository;
-    private final RabbitTemplate rabbitTemplate;
+    private final AppointmentEventPublisher eventPublisher;
 
     public AppointmentService(
             AppointmentRepository appointmentRepository,
             UserRepository userRepository,
-            RabbitTemplate rabbitTemplate) {
+            AppointmentEventPublisher eventPublisher) {
 
         this.appointmentRepository = appointmentRepository;
         this.userRepository = userRepository;
-        this.rabbitTemplate = rabbitTemplate;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -45,11 +44,7 @@ public class AppointmentService {
         Appointment savedAppointment =
                 appointmentRepository.save(appointment);
 
-        rabbitTemplate.convertAndSend(
-                RabbitMQConfig.EXCHANGE_NAME,
-                RabbitMQConfig.ROUTING_KEY,
-                savedAppointment
-        );
+        eventPublisher.publishCreated(savedAppointment);
 
         return savedAppointment;
     }
@@ -102,11 +97,13 @@ public class AppointmentService {
         Appointment updatedAppointment =
                 appointmentRepository.save(appointment);
 
-        rabbitTemplate.convertAndSend(
-                RabbitMQConfig.EXCHANGE_NAME,
-                RabbitMQConfig.ROUTING_KEY,
-                updatedAppointment
-        );
+        if (updatedAppointment.getStatus()
+                == AppointmentStatus.CANCELLED) {
+
+            eventPublisher.publishCancelled(updatedAppointment);
+        } else {
+            eventPublisher.publishUpdated(updatedAppointment);
+        }
 
         return updatedAppointment;
     }
