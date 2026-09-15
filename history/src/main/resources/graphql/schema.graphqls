@@ -1,5 +1,10 @@
 type AppointmentHistory {
     id: ID!
+    eventId: String!
+    eventType: String!
+    eventVersion: Int!
+    occurredAt: String!
+    appointmentId: ID!
     patientUsername: String!
     doctorUsername: String!
     appointmentDate: String!

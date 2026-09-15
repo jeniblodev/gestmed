@@ -44,21 +44,7 @@ public class HistoryEventService {
         }
 
         AppointmentHistory history =
-                historyRepository
-                        .findById(event.appointmentId())
-                        .orElseGet(AppointmentHistory::new);
-
-        history.setId(event.appointmentId());
-        history.setPatientUsername(
-                event.patientUsername()
-        );
-        history.setDoctorUsername(
-                event.doctorUsername()
-        );
-        history.setAppointmentDate(
-                event.appointmentDate()
-        );
-        history.setStatus(event.status());
+                new AppointmentHistory(event);
 
         historyRepository.save(history);
 
