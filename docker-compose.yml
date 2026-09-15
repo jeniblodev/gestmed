@@ -2,20 +2,139 @@ services:
   mysql-db:
     image: mysql:8.0
     container_name: gestmed-mysql
+    restart: unless-stopped
+
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: scheduling
+
     ports:
       - "3308:3306"
+
     volumes:
       - gestmed-mysql-data:/var/lib/mysql
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h localhost -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 20s
 
   rabbitmq:
     image: rabbitmq:3-management
     container_name: gestmed-rabbitmq
+    restart: unless-stopped
+
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
     ports:
       - "5672:5672"
       - "15672:15672"
 
+    volumes:
+      - gestmed-rabbitmq-data:/var/lib/rabbitmq
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "rabbitmq-diagnostics",
+          "-q",
+          "ping"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 20s
+
+  scheduling:
+    build:
+      context: ./scheduling
+      dockerfile: Dockerfile
+
+    container_name: gestmed-scheduling
+    restart: unless-stopped
+
+    environment:
+      SERVER_PORT: 8081
+
+      DB_URL: jdbc:mysql://mysql-db:3306/scheduling?createDatabaseIfNotExist=true
+      DB_USERNAME: root
+      DB_PASSWORD: root
+
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: guest
+      RABBITMQ_PASSWORD: guest
+
+      GESTMED_SEED_DEMO_USERS: "true"
+      SPRING_GRAPHQL_GRAPHIQL_ENABLED: "true"
+
+    ports:
+      - "8081:8081"
+
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  history:
+    build:
+      context: ./history
+      dockerfile: Dockerfile
+
+    container_name: gestmed-history
+    restart: unless-stopped
+
+    environment:
+      SERVER_PORT: 8083
+
+      DB_URL: jdbc:mysql://mysql-db:3306/history?createDatabaseIfNotExist=true
+      DB_USERNAME: root
+      DB_PASSWORD: root
+
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: guest
+      RABBITMQ_PASSWORD: guest
+
+      GRAPHIQL_ENABLED: "true"
+
+    ports:
+      - "8083:8083"
+
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  notification:
+    build:
+      context: ./notification
+      dockerfile: Dockerfile
+
+    container_name: gestmed-notification
+    restart: unless-stopped
+
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: guest
+      RABBITMQ_PASSWORD: guest
+
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
 volumes:
   gestmed-mysql-data:
+  gestmed-rabbitmq-data:
