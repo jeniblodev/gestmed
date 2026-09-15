@@ -168,3 +168,10 @@ Para iniciar novamente sem refazer as imagens:
 docker compose up -d
 ```
 
+## 🧪 Testes ponta a ponta com Postman
+
+O diretório `postman/` contém os artefatos necessários:
+
+- `GestMed.postman_collection.json`: requisições e verificações automatizadas;
+- `GestMed-Local.postman_environment.json`: URLs e credenciais do ambiente local.
+ 

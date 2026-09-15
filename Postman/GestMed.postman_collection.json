@@ -1,0 +1,868 @@
+{
+  "info": {
+    "_postman_id": "2dbf7f48-cda5-43cc-a961-gestmed-e2e",
+    "name": "GestMed - Testes Ponta a Ponta",
+    "description": "Testes manuais e automatizados do fluxo Scheduling -> RabbitMQ -> History/Notification. Execute na ordem, usando o environment GestMed - Local e intervalo de 2000 ms no Collection Runner.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "appointment_id",
+      "value": ""
+    },
+    {
+      "key": "future_date",
+      "value": ""
+    },
+    {
+      "key": "updated_date",
+      "value": ""
+    },
+    {
+      "key": "past_date",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Segurança",
+      "item": [
+        {
+          "name": "01 - Scheduling rejeita requisição sem autenticação",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Retorna HTTP 401', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query { getAllAppointments { id status } }\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{scheduling_url}}/graphql"
+          }
+        },
+        {
+          "name": "02 - Paciente não pode listar todas as consultas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('A autenticação funciona, mas o acesso é negado', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.errors).to.be.an('array').that.is.not.empty;",
+                  "    pm.expect(json.data === null || json.data.getAllAppointments === null).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{patient_username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{patient_password}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query { getAllAppointments { id status } }\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{scheduling_url}}/graphql"
+          }
+        },
+        {
+          "name": "03 - Paciente não pode consultar histórico de terceiros",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('O History aplica a autorização por perfil', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.errors).to.be.an('array').that.is.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{patient_username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{patient_password}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query PatientHistory($patientUsername: String!) { getPatientHistory(patientUsername: $patientUsername) { id } }\",\n  \"variables\": {\n    \"patientUsername\": \"patient\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{history_url}}/graphql"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Fluxo ponta a ponta",
+      "item": [
+        {
+          "name": "01 - Enfermeiro cria uma consulta",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const base = Date.now() + (30 * 24 * 60 * 60 * 1000) + Math.floor(Math.random() * 3600000);",
+                  "const futureDate = new Date(base).toISOString().slice(0, 19);",
+                  "const updatedDate = new Date(base + (24 * 60 * 60 * 1000)).toISOString().slice(0, 19);",
+                  "const pastDate = new Date(Date.now() - (24 * 60 * 60 * 1000)).toISOString().slice(0, 19);",
+                  "pm.collectionVariables.set('future_date', futureDate);",
+                  "pm.collectionVariables.set('updated_date', updatedDate);",
+                  "pm.collectionVariables.set('past_date', pastDate);",
+                  "pm.collectionVariables.unset('appointment_id');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Consulta criada com sucesso', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.errors).to.be.undefined;",
+                  "    pm.expect(json.data.createAppointment.status).to.eql('SCHEDULED');",
+                  "    pm.expect(json.data.createAppointment.patientUsername).to.eql(pm.environment.get('patient_username'));",
+                  "    pm.collectionVariables.set('appointment_id', String(json.data.createAppointment.id));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{nurse_username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{nurse_password}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation CreateAppointment($input: AppointmentInput!) { createAppointment(input: $input) { id patientUsername doctorUsername appointmentDate status } }\",\n  \"variables\": {\n    \"input\": {\n      \"patientUsername\": \"{{patient_username}}\",\n      \"doctorUsername\": \"{{doctor_username}}\",\n      \"appointmentDate\": \"{{future_date}}\"\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{scheduling_url}}/graphql"
+          }
+        },
+        {
+          "name": "02 - Impede conflito no mesmo horário",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Retorna SCHEDULE_CONFLICT', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.errors).to.be.an('array').that.is.not.empty;",
+                  "    pm.expect(json.errors[0].extensions.code).to.eql('SCHEDULE_CONFLICT');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{doctor_username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{doctor_password}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation CreateAppointment($input: AppointmentInput!) { createAppointment(input: $input) { id status } }\",\n  \"variables\": {\n    \"input\": {\n      \"patientUsername\": \"{{patient_username}}\",\n      \"doctorUsername\": \"{{doctor_username}}\",\n      \"appointmentDate\": \"{{future_date}}\"\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{scheduling_url}}/graphql"
+          }
+        },
+        {
+          "name": "03 - Paciente consulta suas consultas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('A consulta criada pertence ao paciente autenticado', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.errors).to.be.undefined;",
+                  "    const id = pm.collectionVariables.get('appointment_id');",
+                  "    const appointment = json.data.getPatientAppointments.find(item => String(item.id) === String(id));",
+                  "    pm.expect(appointment).to.exist;",
+                  "    pm.expect(appointment.patientUsername).to.eql(pm.environment.get('patient_username'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{patient_username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{patient_password}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query { getPatientAppointments { id patientUsername doctorUsername appointmentDate status } }\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{scheduling_url}}/graphql"
+          }
+        },
+        {
+          "name": "04 - History recebeu o evento CREATED",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Histórico contém o evento CREATED', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.errors).to.be.undefined;",
+                  "    const id = pm.collectionVariables.get('appointment_id');",
+                  "    const events = json.data.getPatientHistory.filter(item => String(item.appointmentId) === String(id));",
+                  "    pm.expect(events.map(item => item.eventType)).to.include('CREATED');",
+                  "    pm.expect(new Set(events.map(item => item.eventId)).size).to.eql(events.length);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{doctor_username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{doctor_password}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query PatientHistory($patientUsername: String!) { getPatientHistory(patientUsername: $patientUsername) { id eventId eventType eventVersion occurredAt appointmentId patientUsername doctorUsername appointmentDate status } }\",\n  \"variables\": {\n    \"patientUsername\": \"{{patient_username}}\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{history_url}}/graphql"
+          }
+        },
+        {
+          "name": "05 - Médico confirma e altera a data da consulta",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Consulta atualizada para CONFIRMED', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.errors).to.be.undefined;",
+                  "    pm.expect(json.data.updateAppointment.status).to.eql('CONFIRMED');",
+                  "    pm.expect(json.data.updateAppointment.appointmentDate).to.eql(pm.collectionVariables.get('updated_date'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{doctor_username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{doctor_password}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation UpdateAppointment($input: UpdateAppointmentInput!) { updateAppointment(input: $input) { id patientUsername doctorUsername appointmentDate status } }\",\n  \"variables\": {\n    \"input\": {\n      \"id\": \"{{appointment_id}}\",\n      \"appointmentDate\": \"{{updated_date}}\",\n      \"status\": \"CONFIRMED\"\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{scheduling_url}}/graphql"
+          }
+        },
+        {
+          "name": "06 - History preservou CREATED e UPDATED",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Histórico mantém as duas versões', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.errors).to.be.undefined;",
+                  "    const id = pm.collectionVariables.get('appointment_id');",
+                  "    const events = json.data.getPatientHistory.filter(item => String(item.appointmentId) === String(id));",
+                  "    const types = events.map(item => item.eventType);",
+                  "    pm.expect(types).to.include('CREATED');",
+                  "    pm.expect(types).to.include('UPDATED');",
+                  "    pm.expect(events.length).to.be.at.least(2);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{doctor_username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{doctor_password}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query PatientHistory($patientUsername: String!) { getPatientHistory(patientUsername: $patientUsername) { eventId eventType eventVersion appointmentId appointmentDate status } }\",\n  \"variables\": {\n    \"patientUsername\": \"{{patient_username}}\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{history_url}}/graphql"
+          }
+        },
+        {
+          "name": "07 - Médico cancela a consulta",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Consulta atualizada para CANCELLED', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.errors).to.be.undefined;",
+                  "    pm.expect(json.data.updateAppointment.status).to.eql('CANCELLED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{doctor_username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{doctor_password}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation UpdateAppointment($input: UpdateAppointmentInput!) { updateAppointment(input: $input) { id appointmentDate status } }\",\n  \"variables\": {\n    \"input\": {\n      \"id\": \"{{appointment_id}}\",\n      \"appointmentDate\": \"{{updated_date}}\",\n      \"status\": \"CANCELLED\"\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{scheduling_url}}/graphql"
+          }
+        },
+        {
+          "name": "08 - History preservou CREATED, UPDATED e CANCELLED",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Histórico completo possui os três eventos', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.errors).to.be.undefined;",
+                  "    const id = pm.collectionVariables.get('appointment_id');",
+                  "    const events = json.data.getPatientHistory.filter(item => String(item.appointmentId) === String(id));",
+                  "    const types = events.map(item => item.eventType);",
+                  "    pm.expect(types).to.include.members(['CREATED', 'UPDATED', 'CANCELLED']);",
+                  "    pm.expect(events.length).to.be.at.least(3);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{doctor_username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{doctor_password}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query PatientHistory($patientUsername: String!) { getPatientHistory(patientUsername: $patientUsername) { eventId eventType eventVersion occurredAt appointmentId appointmentDate status } }\",\n  \"variables\": {\n    \"patientUsername\": \"{{patient_username}}\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{history_url}}/graphql"
+          }
+        },
+        {
+          "name": "09 - Paciente consulta somente o próprio histórico",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Todos os registros pertencem ao paciente autenticado', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.errors).to.be.undefined;",
+                  "    pm.expect(json.data.getMyHistory).to.be.an('array').that.is.not.empty;",
+                  "    json.data.getMyHistory.forEach(item => pm.expect(item.patientUsername).to.eql(pm.environment.get('patient_username')));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{patient_username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{patient_password}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query { getMyHistory { eventId eventType appointmentId patientUsername appointmentDate status } }\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{history_url}}/graphql"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Validações",
+      "item": [
+        {
+          "name": "01 - Impede criação em data passada",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('past_date')) {",
+                  "    pm.collectionVariables.set('past_date', new Date(Date.now() - 86400000).toISOString().slice(0, 19));",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Retorna INVALID_APPOINTMENT', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.errors).to.be.an('array').that.is.not.empty;",
+                  "    pm.expect(json.errors[0].extensions.code).to.eql('INVALID_APPOINTMENT');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{nurse_username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{nurse_password}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation CreateAppointment($input: AppointmentInput!) { createAppointment(input: $input) { id } }\",\n  \"variables\": {\n    \"input\": {\n      \"patientUsername\": \"{{patient_username}}\",\n      \"doctorUsername\": \"{{doctor_username}}\",\n      \"appointmentDate\": \"{{past_date}}\"\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{scheduling_url}}/graphql"
+          }
+        },
+        {
+          "name": "02 - Rejeita formato de data inválido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Retorna INVALID_DATE_FORMAT', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.errors).to.be.an('array').that.is.not.empty;",
+                  "    pm.expect(json.errors[0].extensions.code).to.eql('INVALID_DATE_FORMAT');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{nurse_username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{nurse_password}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation CreateAppointment($input: AppointmentInput!) { createAppointment(input: $input) { id } }\",\n  \"variables\": {\n    \"input\": {\n      \"patientUsername\": \"{{patient_username}}\",\n      \"doctorUsername\": \"{{doctor_username}}\",\n      \"appointmentDate\": \"14/09/2026 10:00\"\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{scheduling_url}}/graphql"
+          }
+        },
+        {
+          "name": "03 - Impede alteração de consulta cancelada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Retorna INVALID_APPOINTMENT', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.errors).to.be.an('array').that.is.not.empty;",
+                  "    pm.expect(json.errors[0].extensions.code).to.eql('INVALID_APPOINTMENT');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{doctor_username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{doctor_password}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation UpdateAppointment($input: UpdateAppointmentInput!) { updateAppointment(input: $input) { id status } }\",\n  \"variables\": {\n    \"input\": {\n      \"id\": \"{{appointment_id}}\",\n      \"appointmentDate\": \"{{updated_date}}\",\n      \"status\": \"CONFIRMED\"\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{scheduling_url}}/graphql"
+          }
+        }
+      ]
+    }
+  ]
+}
