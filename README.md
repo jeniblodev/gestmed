@@ -46,7 +46,7 @@ A aplicação utiliza **Spring Security** para controle de acesso baseado em pap
 - **Framework Principal:** Spring Boot 4.1.1 (Spring Security, Spring Data JPA)
 - **API Query Language:** GraphQL
 - **Mensageria:** RabbitMQ
-- **Banco de Dados:** MySQL / MYSQL
+- **Banco de Dados:** MySQL
 - **Containerização:** Docker & Docker Compose
 - **Testes de API:** Postman Collection
 
@@ -170,7 +170,7 @@ docker compose up -d
 
 ## 🧪 Testes ponta a ponta com Postman
 
-O diretório `postman/` contém os artefatos necessários:
+O diretório `Postman/` contém os artefatos necessários:
 
 - `GestMed.postman_collection.json`: requisições e verificações automatizadas;
 - `GestMed-Local.postman_environment.json`: URLs e credenciais do ambiente local.
